@@ -11,6 +11,7 @@
 	 * 
 	 * Sail-CMS requires the following write permissions
 	 *   - cms/data/
+	 * 	 - cms/password/
 	 */
 
 	// TODO: Should only be called when the users wants to log in.

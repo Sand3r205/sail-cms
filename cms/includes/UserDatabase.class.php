@@ -7,7 +7,7 @@
 	{
 		function __construct()
 		{
-			parent::__construct('cms/data/user.db');
+			parent::__construct("cms/data/user.db");
 			
 			$this->initialise();
 		}
@@ -22,8 +22,27 @@
 			$selectResult = $selectStatement->execute();
 
 			if (!$username = $selectResult->fetchArray()) {
-				$insertStatement = $this->prepare("INSERT INTO users (UserName, PasswordHash) VALUES ('admin', 'c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec')");
+				$rand = rand();
+				$password = hash('sha512', $rand);
+				$hash = hash('sha512', $password);
+
+				$file = fopen("cms/password/newpass.txt", "w");
+				fwrite($file, $password);
+				fclose($file);
+
+				$insertStatement = $this->prepare("INSERT INTO users (UserName, PasswordHash) VALUES ('admin', '" . $hash . "')");
 				$insertStatement->execute();
+			} else if (file_exists("cms/password/pass.txt") && !file_exists("cms/password/newpass.txt")) {
+				$file = fopen("cms/password/pass.txt", "r");
+				$password = fgets($file);
+
+				$hash = hash('sha512', $password);
+				
+				$updateStatement = $this->prepare("UPDATE users SET PasswordHash = '" . $hash . "' WHERE UserName = 'admin';");
+				$updateStatement->execute();
+
+				fclose($file);
+				unlink("cms/password/pass.txt");
 			}
 		}
 	}
