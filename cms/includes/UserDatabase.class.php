@@ -73,10 +73,7 @@
 					$rand = rand();
 					$token = hash('sha512', $rand);
 
-					$deleteStatement = self::prepare("DELETE FROM sessions WHERE UserId=:userId");
-					$deleteStatement->bindValue(":userId", $res[0], SQLITE3_INT);
-					$deleteStatement->execute();
-					$deleteStatement->close();
+					self::logout($res[0]);
 
 					$insertStatement = self::prepare("INSERT INTO sessions (UserId, Token, Expires) VALUES (:userId, :token, :expires)");
 					$insertStatement->bindValue(":userId", $res[0], SQLITE3_INT);
@@ -112,6 +109,14 @@
 
 				return $res[0];
 			}
+		}
+
+		public function logout(int $userId)
+		{
+			$deleteStatement = self::prepare("DELETE FROM sessions WHERE UserId=:userId");
+			$deleteStatement->bindValue(":userId", $userId, SQLITE3_INT);
+			$deleteStatement->execute();
+			$deleteStatement->close();
 		}
 	}
 
