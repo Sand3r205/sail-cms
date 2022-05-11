@@ -53,7 +53,7 @@
 
 			$selectStatement->close();
 
-			$createSessionStatement = self::prepare("CREATE TABLE IF NOT EXISTS sessions (userId INTEGER, token char(128), expires INTEGER)");
+			$createSessionStatement = self::prepare("CREATE TABLE IF NOT EXISTS sessions (UserId INTEGER, Token char(128), Expires INTEGER)");
 			$createSessionStatement->execute();
 			$createSessionStatement->close();
 		}
@@ -73,22 +73,44 @@
 					$rand = rand();
 					$token = hash('sha512', $rand);
 
-					$deleteStatement = self::prepare("DELETE FROM sesions WHERE userId=:userId");
+					$deleteStatement = self::prepare("DELETE FROM sessions WHERE UserId=:userId");
 					$deleteStatement->bindValue(":userId", $res[0], SQLITE3_INT);
 					$deleteStatement->execute();
 					$deleteStatement->close();
 
-					$insertStatement = self::prepare("INSERT INTO sessions (userId, token, expires) VALUES (:userId, :token, :expires)");
+					$insertStatement = self::prepare("INSERT INTO sessions (UserId, Token, Expires) VALUES (:userId, :token, :expires)");
 					$insertStatement->bindValue(":userId", $res[0], SQLITE3_INT);
 					$insertStatement->bindValue(":token", $token, SQLITE3_TEXT);
 					$insertStatement->bindValue(":expires", time() + self::$TOKENDURATION, SQLITE3_INT);
 					$insertStatement->execute();
 					$insertStatement->close();
 
+					// User has logged in, hence we can delete this file.
+					if (file_exists("cms/password/newpass.txt")) {
+						unlink("cms/password/newpass.txt");
+					}
+
 					return $token;
 				} else {
 					return false;
 				}
+			}
+		}
+
+		public function authorise(string $token)
+		{
+			$selectStatement = self::prepare("SELECT UserId, Expires FROM sessions WHERE Token=:token LIMIT 1");
+			$selectStatement->bindValue(":token", $token, SQLITE3_TEXT);
+			$selectResult->execute();
+
+			if (!$res = $selectResult.fetchArray()) {
+				return false;
+			} else {
+				if ($res[1] < time()) {
+					return false;
+				}
+
+				return $res[0];
 			}
 		}
 	}
