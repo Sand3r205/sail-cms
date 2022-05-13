@@ -5,11 +5,11 @@
 
 	class UserDatabase extends SQLite3
 	{
-		private static $TOKEN_DURATION = 3600;
+		const TOKEN_DURATION = 3600;
 
 		public function __construct()
 		{
-			parent::__construct("cms/data/user.db");
+			parent::__construct(__DIR__ . "/../data/user.db");
 			
 			self::initialise();
 		}
@@ -36,8 +36,8 @@
 				$insertStatement->bindValue(':hash', $hash, SQLITE3_TEXT);
 				$insertStatement->execute();
 				$insertStatement->close();
-			} else if (file_exists("cms/password/pass.txt")) {
-				$file = fopen("cms/password/pass.txt", "r");
+			} else if (file_exists(__DIR__ . "/../password/pass.txt")) {
+				$file = fopen(__DIR__ . "/../password/pass.txt", "r");
 				$password = fgets($file);
 
 				$hash = hash('sha512', $password);
@@ -48,7 +48,7 @@
 				$updateStatement->close();
 
 				fclose($file);
-				unlink("cms/password/pass.txt");
+				unlink(__DIR__ . "/../password/pass.txt");
 			}
 
 			$selectStatement->close();
@@ -64,7 +64,7 @@
 			$selectStatement->bindValue(":username", $username);
 			$selectResult = $selectStatement->execute();
 
-			if (!$res = $selectResult.fetchArray()) {
+			if (!$res = $selectResult->fetchArray()) {
 				return false;
 			} else {
 				$inputHash = hash('sha512', $password);
@@ -73,18 +73,19 @@
 					$rand = rand();
 					$token = hash('sha512', $rand);
 
-					self::logout($res[0]);
+					self::logoutByUserId($res[0]);
 
 					$insertStatement = self::prepare("INSERT INTO sessions (UserId, Token, Expires) VALUES (:userId, :token, :expires)");
-					$insertStatement->bindValue(":userId", $res[0], SQLITE3_INT);
+					$insertStatement->bindValue(":userId", $res[0], SQLITE3_INTEGER);
 					$insertStatement->bindValue(":token", $token, SQLITE3_TEXT);
-					$insertStatement->bindValue(":expires", time() + self::$TOKENDURATION, SQLITE3_INT);
+					echo $TOKENDURATION;
+					$insertStatement->bindValue(":expires", time() + self::TOKEN_DURATION, SQLITE3_INTEGER);
 					$insertStatement->execute();
 					$insertStatement->close();
 
 					// User has logged in, hence we can delete this file.
-					if (file_exists("cms/password/newpass.txt")) {
-						unlink("cms/password/newpass.txt");
+					if (file_exists(__DIR__ . "/../password/newpass.txt")) {
+						unlink(__DIR__ . "/../password/newpass.txt");
 					}
 
 					return $token;
@@ -98,9 +99,9 @@
 		{
 			$selectStatement = self::prepare("SELECT UserId, Expires FROM sessions WHERE Token=:token LIMIT 1");
 			$selectStatement->bindValue(":token", $token, SQLITE3_TEXT);
-			$selectResult->execute();
+			$selectResult = $selectStatement->execute();
 
-			if (!$res = $selectResult.fetchArray()) {
+			if (!$res = $selectResult->fetchArray()) {
 				return false;
 			} else {
 				if ($res[1] < time()) {
@@ -111,16 +112,33 @@
 			}
 		}
 
-		public function logout(int $userId)
+		public function logoutByUserId(int $userId)
 		{
 			$deleteStatement = self::prepare("DELETE FROM sessions WHERE UserId=:userId");
-			$deleteStatement->bindValue(":userId", $userId, SQLITE3_INT);
+			$deleteStatement->bindValue(":userId", $userId, SQLITE3_INTEGER);
 			$deleteStatement->execute();
 			$deleteStatement->close();
 		}
+
+		public function logoutByToken(string $token)
+		{
+			$deleteStatement = self::prepare("DELETE FROM sessions WHERE Token=:token");
+			$deleteStatement->bindValue(":token", $token, SQLITE3_TEXT);
+			$deleteStatement->execute();
+			$deleteStatement->close();
+		}
+
+		public function getUserIdFromToken(string $token)
+		{
+			$selectStatement = self::prepare("SELECT UserId FROM sessions WHERE Token=:token");
+			$selectStatement->bindValue(":token", $token, SQLITE3_TEXT);
+			$selectResult = $selectStatement->execute();
+
+			if (!$res = $selectResult->fetchArray()) {
+				return false;
+			} else {
+				return $res;
+			}
+		}
 	}
-
-	$userDB = new UserDatabase();
-
-	$userDB->close();
 ?>

@@ -13,17 +13,35 @@
 	 *   - cms/data/
 	 * 	 - cms/password/
 	 */
-
-	// TODO: Should only be called when the users wants to log in.
-	include('cms/includes/UserDatabase.class.php');
 ?>
 
 <!DOCTYPE html>
 <html>
 	<head>
 		<title>Sail CMS</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+		<script type="text/javascript" src="static/js/login.js"></script>
 	</head>
 	<body>
-		<p>Sail CMS</p>
+		<?php
+			$logoutDiv = '<div id="logout">Uitloggen</div>';
+			$loginDiv = '<div id="login">Inloggen</div>';
+
+			if (isset($_COOKIE['token'])) {
+				include __DIR__ . '/cms/includes/UserDatabase.class.php';
+
+				$userDB = new UserDatabase();
+				$result = $userDB->authorise($_COOKIE['token']);
+				$userDB->close();
+
+				if ($result) {
+					echo $logoutDiv;
+				} else {
+					echo $loginDiv;
+				}
+			} else {
+				echo $loginDiv;
+			}
+		?>
 	</body>
 </html>
